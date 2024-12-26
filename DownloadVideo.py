@@ -66,7 +66,6 @@ def download_task(url, quality):
                 ydl_opts['outtmpl'] = default_path
                 progress_var.set(0)
                 progress_bar.place(relx=0.5, rely=0.7, anchor="center")
-                progress_label.place(relx=0.5, rely=0.75, anchor="center")
 
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl_inner:
                     ydl_inner.download([url])
@@ -82,7 +81,7 @@ def download_task(url, quality):
     finally:
         progress_bar.place_forget()  # Hide the progress bar
         progress_label.place_forget()  # Hide the progress label
-        active_downloads.pop(url, None)
+        active_downloads.pop(url)
 
 # Function to handle progress updates
 def progress_hook(d):
@@ -118,9 +117,14 @@ def show_success_dialog(file_path):
     tk.Label(success_dialog, text="Download complete!", font=("Arial", 12, "bold")).pack(pady=10)
 
     # Buttons
-    tk.Button(success_dialog, text="Open", command=open_file).pack(pady=5)
-    tk.Button(success_dialog, text="Open With", command=open_with).pack(pady=5)
-    tk.Button(success_dialog, text="Close", command=close_dialog).pack(pady=5)
+    btn_open = tk.Button(success_dialog, text="Open", command=open_file)
+    btn_open.pack(pady=5)
+
+    btn_open_with = tk.Button(success_dialog, text="Open With", command=open_with)
+    btn_open_with.pack(pady=5)
+
+    btn_close = tk.Button(success_dialog, text="Close", command=close_dialog)
+    btn_close.pack(pady=5)
 
 # Function to add download details to the history list
 def add_download_to_history(file_path, status):
@@ -140,7 +144,9 @@ def open_add_url_dialog():
             return
 
         quality_var.set(available_formats[0][0])  # Default to the first available format
-        quality_menu['values'] = [format[1] for format in available_formats]  # Update available formats in the combobox
+        quality_options = [format[1] for format in available_formats]
+        quality_menu['values'] = quality_options  # Update available formats in the combobox
+        quality_menu.pack(pady=5)
 
         threading.Thread(target=download_video, args=(url, quality_var.get()), daemon=True).start()
         url_dialog.destroy()
@@ -156,6 +162,9 @@ def open_add_url_dialog():
     tk.Label(url_dialog, text="Select Video Quality:", font=("Arial", 12)).pack(pady=10)
     quality_var = tk.StringVar(value="1080p")
     quality_menu = ttk.Combobox(url_dialog, textvariable=quality_var, state="readonly")
+    quality_options = ["1080p", "720p", "480p", "360p", "144p"]
+    quality_menu['values'] = quality_options
+    quality_menu.current(quality_options.index("1080p"))
     quality_menu.pack(pady=5)
 
     tk.Button(url_dialog, text="Download", command=start_download).pack(pady=10)
@@ -175,14 +184,9 @@ def open_registration_dialog():
         messagebox.showinfo("Registration", "Registration Successful!")
         registration_dialog.destroy()
 
-    def order_online():
-        os.startfile("https://secure.internetdownloadmanager.com/buy_idm.html?v=642b26")
-
     registration_dialog = tk.Toplevel(root)
     registration_dialog.title("Registration")
-    registration_dialog.geometry("400x350")
-
-    tk.Button(registration_dialog, text="Order Online", command=order_online).pack(pady=5)
+    registration_dialog.geometry("400x300")
 
     tk.Label(registration_dialog, text="First Name").pack(pady=5)
     first_name_entry = tk.Entry(registration_dialog)
@@ -213,15 +217,15 @@ def stop_download():
 
 # Function to create buttons with icons
 def create_icon_button(frame, image_path, text, command):
-    try:
-        icon_image = Image.open(image_path).resize((32, 32))  # Resize icon to 32x32
-        icon = ImageTk.PhotoImage(icon_image)
-        btn = tk.Button(frame, image=icon, text=text, compound="top", command=command)
-        btn.image = icon  # Store reference to prevent garbage collection
-        btn.pack(side="left", padx=5, pady=5)
-        return btn
-    except FileNotFoundError:
-        tk.Button(frame, text=text, compound="top", command=command).pack(side="left", padx=5, pady=5)
+    # Load and resize the icon
+    icon_image = Image.open(image_path).resize((32, 32))  # Resize icon to 32x32
+    icon = ImageTk.PhotoImage(icon_image)
+    # Create button with icon and text
+    btn = tk.Button(frame, image=icon, text=text, compound="top", command=command)
+    btn.image = icon  # Store reference to prevent garbage collection
+    btn.pack(side="left", padx=5, pady=5)
+    return btn
+
 
 # Create the main GUI window
 root = tk.Tk()
@@ -242,7 +246,6 @@ help_menu = tk.Menu(menu_bar, tearoff=0)
 menu_bar.add_cascade(label="Help", menu=help_menu)
 help_menu.add_command(label="About", command=lambda: messagebox.showinfo(
     "About", "VideoDownloader Pro\nVersion: 1.0\nAuthor: Nguyễn Văn Mão\nEmail: nguyenmao.2912@gmail.com\nCopyright 2024"))
-help_menu.add_command(label="Registration", command=open_registration_dialog)
 
 # Taskbar below the menu
 taskbar_frame = tk.Frame(root, bg="#f0f0f0")
@@ -256,6 +259,9 @@ icon_frame.pack(fill="x", padx=10, pady=10)
 create_icon_button(taskbar_frame, "Images/AddURL.png", "Add URL", open_add_url_dialog)
 create_icon_button(taskbar_frame, "Images/Stop.png", "Stop", stop_download)
 create_icon_button(taskbar_frame, "Images/Delete.png", "Delete All", delete_all)
+
+# Create registration option button
+create_icon_button(taskbar_frame, "Images/Register.png", "Register", open_registration_dialog)
 
 # Download history list
 download_frame = tk.Frame(root)
@@ -275,5 +281,9 @@ download_tree.pack(fill="both", expand=True)
 progress_var = tk.IntVar()
 progress_bar = ttk.Progressbar(root, orient="horizontal", length=400, mode="determinate", variable=progress_var)
 progress_label = tk.Label(root, text="", font=("Arial", 12, "bold"), fg="#0078D4")
+
+# Place the progress bar at the center of the window
+progress_bar.place(relx=0.5, rely=0.7, anchor="center")
+progress_label.place(relx=0.5, rely=0.75, anchor="center")
 
 root.mainloop()
